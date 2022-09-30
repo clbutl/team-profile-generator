@@ -1,9 +1,15 @@
 const inquirer = require('inquirer');
-const fs = require('fs');
-const writeJs = require('./write');
-const { create } = require('domain');
+const fs = require('fs')
+const questions = require('./questions');
+const Employee = require('./lib/employee');
+const Manager = require('./lib/manager');
+const Engineer = require('./lib/engineer');
+const Intern = require('./lib/intern');
 
-const writeCss = () => 
+let roleInfo = []
+let roleEdit = []
+
+writeCss = () => 
   `.text-medium {
     font-size: 30px;
   } .text-large {
@@ -18,9 +24,18 @@ const writeCss = () =>
     box-shadow: 5px 5px 5px black;
   } .card-body {
     padding: 50px 20px;
-  }`
+  }
+  
+  .links{
+    color: black;
+    text-decoration: none;
+  } .links:hover {
+    cursor: pointer;
+    color: gray;
+    text-decoration: none;
+  }`;
 
-const writeToFile = ({ name, id, email, phone }, roleEdit) =>
+writeToFile = ({ name, id, email, office }, roleEdit) =>
   `<!DOCTYPE html>
   <html lang="en">
   <head>
@@ -47,10 +62,10 @@ const writeToFile = ({ name, id, email, phone }, roleEdit) =>
           <h3 class="p-1">ID: <span class="font-weight-normal">${id}</span></h3>
         </div>
         <div class="card mt-1">
-          <h3 class="p-1">Email: <span class="font-weight-normal">${email}</span></h3>
+          <h3 class="p-1">Email: <a class="links font-weight-normal" href="mailto:${email}">${email}</a></h3>
         </div>
         <div class="card mt-1">
-          <h3 class="p-1">Phone: <span class="font-weight-normal">${phone}</span></h3>
+          <h3 class="p-1">Office #: <span class="font-weight-normal">${office}</span></h3>
         </div>
       </div>
     </div>
@@ -61,163 +76,62 @@ const writeToFile = ({ name, id, email, phone }, roleEdit) =>
 
   <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
-  </html>` 
-  ;
-  
-
-const managerQuestions = [
-  {
-    type: 'input',
-    name: 'name',
-    message: 'What is your name?',
-  },
-  {
-    type: 'input',
-    name: 'id',
-    message: 'What is your id?',
-  },
-  {
-    type: 'input',
-    name: 'email',
-    message: 'What is your email?',
-  },
-  {
-    type: 'input',
-    name: 'phone',
-    message: 'What is your phone number?',
-  },
-];
+  </html>`;
 
 
-const newRoleQuestion = [
-  {
-    type: 'list',
-    name: 'roleName',
-    message: 'What role would you like to add?',
-    choices: [
-      'Engineer',
-      'Intern',
-      'Finish Adding New Roles'
-    ]
-  },
-];
 
-
-const teamEngineerQuestions = [
-  {
-    type: 'input',
-    name: 'teamName',
-    message: "What is the team member's name?",
-  },
-  {
-    type: 'input',
-    name: 'roleId',
-    message: "What is the team member's id?",
-  },
-  {
-    type: 'input',
-    name: 'roleEmail',
-    message: 'What is thier email?',
-  },
-  {
-    type: 'input',
-    name: 'gituser',
-    message: 'What is their GitHub Username?',
-  },
-];
-
-const teamInternQuestions = [
-  {
-    type: 'input',
-    name: 'teamName',
-    message: "What is the team member's name?",
-  },
-  {
-    type: 'input',
-    name: 'roleId',
-    message: "What is the team member's id?",
-  },
-  {
-    type: 'input',
-    name: 'roleEmail',
-    message: 'What is thier email?',
-  },
-  {
-    type: 'input',
-    name: 'school',
-    message: 'What is their school?',
-  },
-];
-
-// Array of pushed role info, NOT including manager info as of now
-let roleInfo = []
-let roleEdit = []
-
-// Initial Function, decides manager outcomes
-function init() {
+function managerAsk() {
   inquirer
   .prompt(managerQuestions)
   .then((answers) => {
-    console.log(answers)
-    console.log(roleInfo)
-
-    // const readmePageContent = writeToFile(answers, licenseInfo);
-
-    // console.log(answers)
-    // fs.writeFile('readme.md', readmePageContent, (err) =>
-    //   err ? console.log(err) : console.log('Successfully created readme.md!')
-    // );
-
-    newRolesIdentify(answers)
+    const manager = new Manager(answers.name, answers.id, answers.email, answers.office)
+    roleInfo.push(manager)
+    newRoles(answers)
   })
-  
-};
+}
 
-// Checks to see what new role the user wants to create, if any new role
-function newRolesIdentify(answersManger) {
+function newRoles(managerAnswers) {
   inquirer
   .prompt(newRoleQuestion)
   .then((answers) => {
     if (answers.roleName === 'Engineer') {
-      newRolesEngineer(answersManger, answers)
+      newRolesEngineer(managerAnswers, answers)
     } else if (answers.roleName === 'Intern') {
-      newRolesIntern(answersManger, answers)
+      newRolesIntern(managerAnswers, answers)
     } else {
-      createPublic(answersManger, roleInfo)
+      createPublic(managerAnswers, roleInfo)
     } 
   })
 }
 
-// Questions about new role - Engineer
-function newRolesEngineer(answersManger, answersRole) {
+function newRolesEngineer(managerAnswers, answersRole) {
   inquirer
   .prompt(teamEngineerQuestions)
   .then((answers) => {
+    const engineer = new Engineer(answers.teamName, answers.roleId, answers.roleEmail, answers.gituser)
+    console.log(engineer)
     const answersRoleInfo = Object.assign(answersRole, answers)
     roleInfo.push(answersRoleInfo)
-    console.log(roleInfo)
-
-    newRolesIdentify(answersManger)
+    newRoles(managerAnswers)
   })
 }
-// Questions about new role - Intern
-function newRolesIntern(answersManger, answersRole) {
+
+function newRolesIntern(managerAnswers, answersRole) {
   inquirer
   .prompt(teamInternQuestions)
   .then((answers) => {
+    const intern = new Intern(answers.teamName, answers.roleId, answers.roleEmail, answers.school)
+    console.log(intern)
     const answersRoleInfo = Object.assign(answersRole, answers)
     roleInfo.push(answersRoleInfo)
-    console.log(roleInfo)
 
-    newRolesIdentify(answersManger)
+    newRoles(managerAnswers)
   })
 }
 
-// Run when user decides to not create any new roles
-function createPublic(answersManger, roleInfo) {
-  let newEdit = ''
+function createPublic(managerAnswers, roleInfo) {
+  let newEdit;
 
-  console.log(roleInfo)
   for (let i = 0; i < roleInfo.length; i++) {
     if (roleInfo[i].roleName === 'Engineer') {
       newEdit = 
@@ -232,10 +146,10 @@ function createPublic(answersManger, roleInfo) {
           <h3 class="p-1">ID: <span class="font-weight-normal">${roleInfo[i].roleId}</span></h3>
         </div>
         <div class="card mt-1">
-          <h3 class="p-1">Email: <span class="font-weight-normal">${roleInfo[i].roleEmail}</span></h3>
+          <h3 class="p-1">Email: <a class="links font-weight-normal" href="mailto:${roleInfo[i].roleEmail}">${roleInfo[i].roleEmail}</a></h3>
         </div>
         <div class="card mt-1">
-          <h3 class="p-1">Github: <span class="font-weight-normal">${roleInfo[i].gituser}</span></h3>
+          <h3 class="p-1">Github: <a class="links font-weight-normal" target="_blank" href="https://github.com/${roleInfo[i].gituser}">${roleInfo[i].gituser}</a></h3>
         </div>
       </div>
     </div>
@@ -254,40 +168,28 @@ function createPublic(answersManger, roleInfo) {
           <h3 class="p-1">ID: <span class="font-weight-normal">${roleInfo[i].roleId}</span></h3>
         </div>
         <div class="card mt-1">
-          <h3 class="p-1">Email: <span class="font-weight-normal">${roleInfo[i].roleEmail}</span></h3>
+          <h3 class="p-1">Email: <a class="links font-weight-normal" href="mailto:${roleInfo[i].roleEmail}">${roleInfo[i].roleEmail}</a></h3>
         </div>
         <div class="card mt-1">
-          <h3 class="p-1">Github: <span class="font-weight-normal">${roleInfo[i].school}</span></h3>
+          <h3 class="p-1">School: <span class="font-weight-normal">${roleInfo[i].school}</span></h3>
         </div>
       </div>
     </div>
     `
       roleEdit.push(newEdit)
-    } else {
-      console.log('ERROR GRRRR :(')
-    } 
-  }
+    } }
   
   const completeRoles = roleEdit.join(" ")
 
-  const mainHtml = writeToFile(answersManger, completeRoles);
+  const mainHtml = writeToFile(managerAnswers, completeRoles);
 
-  fs.writeFile('style.css', writeCss(), (err) => 
-    err ? console.log(err) : console.log('CSS!')
-    );
+  fs.writeFile('./dist/style.css', writeCss(), (err) => 
+  err ? console.log(err) : console.log('CSS!')
+  );
 
-  fs.writeFile('index.html', mainHtml, (err) =>
-      err ? console.log(err) : console.log('Successfully created index.html!')
-    );
+  fs.writeFile('./dist/index.html', mainHtml, (err) =>
+  err ? console.log(err) : console.log('Successfully created index.html!')
+  );
+  }
 
-
-  // const test1 = writeJs(answersManger, roleInfo)
-  // fs.appendFile('index.html', test1, (err) => 
-  //     err ? console.log(err) : console.log('APPENDED!')
-  //   );
-}
-
-
-
-
-init();
+managerAsk()
